@@ -10,9 +10,11 @@ A [rm-appload](https://github.com/asivery/rm-appload) Syncthing application for 
 
 ## Screenshots
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/06cb7989-047f-41c7-bb1f-0346cd4ed526" alt="installer" width="400"/>
-  <img src="https://github.com/user-attachments/assets/652a7c1f-95f5-40b1-b962-f322f76fed67" alt="app" width="400"/>
+  <img src="https://github.com/user-attachments/assets/26af037c-b2f5-4bb9-9c98-bd36c40a7315" alt="installer" width="300"/>
+  <img src="https://github.com/user-attachments/assets/d9888f7e-a2a0-4dc1-919d-841fb79a72fe" alt="app" width="300"/>
+  <img src="https://github.com/user-attachments/assets/3fb5af54-9fe7-4bc4-898d-4f21a1907221" alt="app" width="300"/>
 </p>
+
 
 ## Tested Devices
 
