@@ -55,7 +55,7 @@ A [rm-appload](https://github.com/asivery/rm-appload) Syncthing application for 
 
 1. **Download Syncthing for reMarkable**
    
-   Download the latest release of Syncthing for reMarkable.
+   Download the [latest release](https://github.com/paviro/Syncthing-for-reMarkable/releases) of Syncthing for reMarkable.
 
 2. **Extract and Copy Files**
    
