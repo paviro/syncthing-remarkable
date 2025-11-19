@@ -1,15 +1,13 @@
-pub mod archive;
-pub mod architecture;
-pub mod assets;
-pub mod client;
-pub mod download;
-pub mod installer;
-pub mod progress;
+//! Deployment workflows and utilities for Syncthing installation and updates.
+
+pub mod http;
+pub mod system;
 pub mod types;
-pub mod updater;
+pub mod util;
+pub mod workflows;
 
-pub use installer::*;
-pub use progress::*;
+// Re-export commonly used items for convenience
 pub use types::*;
-pub use updater::*;
-
+pub use util::progress::*;
+pub use workflows::installer::Installer;
+pub use workflows::updater::Updater;

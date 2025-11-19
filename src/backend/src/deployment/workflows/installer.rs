@@ -7,12 +7,12 @@ use tokio::fs;
 use tokio::process::Command;
 use tracing::{error, warn};
 
-use crate::deployment::architecture::detect_architecture;
-use crate::deployment::archive;
+use crate::deployment::system::architecture::detect_architecture;
+use crate::deployment::system::archive;
 use crate::config::Config;
-use crate::deployment::assets::{self, ReleaseAsset};
-use crate::deployment::client::{default_request_timeout, github_client};
-use crate::deployment::download::download_to_path;
+use crate::deployment::http::assets::{self, ReleaseAsset};
+use crate::deployment::http::client::{default_request_timeout, github_client};
+use crate::deployment::http::download::download_to_path;
 use crate::deployment::DownloadProgressSender;
 use crate::utils::{filesystem, systemctl};
 use crate::types::MonitorError;

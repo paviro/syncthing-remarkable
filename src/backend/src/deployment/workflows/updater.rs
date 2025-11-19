@@ -8,12 +8,12 @@ use tempfile::TempDir;
 use tokio::fs;
 use tracing::info;
 
-use crate::deployment::architecture::{detect_architecture, Architecture};
-use crate::deployment::archive;
+use crate::deployment::system::architecture::{detect_architecture, Architecture};
+use crate::deployment::system::archive;
 use crate::config::Config;
-use crate::deployment::assets;
-use crate::deployment::client::{default_request_timeout, github_client};
-use crate::deployment::download::download_to_path;
+use crate::deployment::http::assets;
+use crate::deployment::http::client::{default_request_timeout, github_client};
+use crate::deployment::http::download::download_to_path;
 use crate::deployment::{DownloadProgressSender, UpdateCheckResult};
 use crate::types::MonitorError;
 
