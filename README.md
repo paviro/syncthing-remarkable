@@ -1,4 +1,4 @@
-# Syncthing Monitor
+# Syncthing for reMarkable
 
 A [rm-appload](https://github.com/asivery/rm-appload) Syncthing application for reMarkable tablets. It will automatically install Syncthing and create a systemd service for you and allows you to monitor your syncing states. 
 
