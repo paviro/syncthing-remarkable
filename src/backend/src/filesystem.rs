@@ -58,25 +58,63 @@ pub async fn remount_root_rw() -> Result<bool, MonitorError> {
     Ok(was_readonly)
 }
 
-/// Restore root filesystem to read-only (only if should_restore is true)
+/// Restore root filesystem to read-only and reapply /etc overlay (only if should_restore is true)
 pub async fn restore_mounts_if_needed(should_restore: bool) -> Result<(), MonitorError> {
     if !should_restore {
         return Ok(());
     }
     
-    let output = Command::new("mount")
-        .args(&["-o", "remount,ro", "/"])
-        .output()
-        .await?;
+    {
+        let output = Command::new("mount")
+            .args(&["-o", "remount,ro", "/"])
+            .output()
+            .await;
+        
+        match output {
+            Ok(out) if out.status.success() => Ok(()),
+            Ok(out) => {
+                let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                Err(MonitorError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to remount / as ro: {}", stderr)
+                )))
+            }
+            Err(err) => Err(MonitorError::Io(err)),
+        }
+    }?;
     
-    if output.status.success() {
-        Ok(())
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(MonitorError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to remount / as ro: {}", stderr)
-        )))
+    remount_etc_overlay().await
+}
+
+/// Reapply the /etc overlay mount used on reMarkable devices
+async fn remount_etc_overlay() -> Result<(), MonitorError> {
+    let output = Command::new("mount")
+        .args(&[
+            "-t",
+            "overlay",
+            "overlay",
+            "-o",
+            "lowerdir=/etc,upperdir=/var/volatile/etc,workdir=/var/volatile/.etc-work",
+            "/etc",
+        ])
+        .output()
+        .await;
+    
+    match output {
+        Ok(out) if out.status.success() => Ok(()),
+        Ok(out) => {
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            // If the overlay is already mounted, treat it as success
+            if stderr.contains("busy") || stderr.contains("already mounted") {
+                eprintln!("/etc overlay already mounted, skipping remount");
+                return Ok(());
+            }
+            Err(MonitorError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to remount /etc overlay: {}", stderr)
+            )))
+        }
+        Err(err) => Err(MonitorError::Io(err)),
     }
 }
 
