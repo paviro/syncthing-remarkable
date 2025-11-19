@@ -13,6 +13,9 @@ A [rm-appload](https://github.com/asivery/rm-appload) Syncthing application for 
 - reMarkable Paper Pro Move
 
 ## Screenshots
+![installer](https://github.com/user-attachments/assets/06cb7989-047f-41c7-bb1f-0346cd4ed526)
+![app](https://github.com/user-attachments/assets/652a7c1f-95f5-40b1-b962-f322f76fed67)
+
 
 ## How to Install
 
