@@ -1,0 +1,6 @@
+{
+  "systemd_service_name": "syncthing.service",
+  "syncthing_config_dir": "/home/root/.config/syncthing",
+  "disable_syncthing_installer": true
+}
+

@@ -1,0 +1,17 @@
+# Rust
+src/backend/target/
+**/*.rs.bk
+src/backend/release/
+
+# App build output
+/target/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

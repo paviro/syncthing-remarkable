@@ -1,0 +1,11 @@
+<RCC>
+    <qresource>
+        <file>ui/main.qml</file>
+        <file>ui/HeaderBar.qml</file>
+        <file>ui/ServiceStatusCard.qml</file>
+        <file>ui/FolderListPanel.qml</file>
+        <file>ui/StatusFooter.qml</file>
+        <file>ui/InstallerPage.qml</file>
+        <file>icon.png</file>
+    </qresource>
+</RCC>
