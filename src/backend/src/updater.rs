@@ -125,8 +125,8 @@ impl Updater {
 
     fn get_asset_name_for_arch(&self, arch: Architecture) -> String {
         match arch {
-            Architecture::Arm64 => "syncthing-rm-appload-arm64.zip".to_string(),
-            Architecture::Arm32 => "syncthing-rm-appload-arm.zip".to_string(),
+            Architecture::Arm64 => "syncthing-rm-appload-aarch64.zip".to_string(),
+            Architecture::Arm32 => "syncthing-rm-appload-armv7.zip".to_string(),
         }
     }
 
