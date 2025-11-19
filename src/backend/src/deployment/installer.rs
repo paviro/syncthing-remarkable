@@ -13,7 +13,7 @@ use crate::config::Config;
 use crate::deployment::assets::{self, ReleaseAsset};
 use crate::deployment::client::{default_request_timeout, github_client};
 use crate::deployment::download::download_to_path;
-use crate::deployment::system::run_command;
+use crate::systemctl;
 use crate::deployment::DownloadProgressSender;
 use crate::filesystem;
 use crate::types::MonitorError;
@@ -93,7 +93,7 @@ impl Installer {
 
     pub async fn restart_service(&self) -> Result<(), MonitorError> {
         let service_name = &self.config.systemd_service_name;
-        run_command("systemctl", &["restart", service_name]).await
+        systemctl::execute(&["restart", service_name]).await
     }
 
     fn binary_path(&self) -> Result<PathBuf, MonitorError> {
@@ -133,10 +133,10 @@ impl Installer {
             warn!(error = ?err, "Warning during installer unmount");
         }
         self.write_service_file().await?;
-        run_command("systemctl", &["daemon-reload"]).await?;
+        systemctl::execute(&["daemon-reload"]).await?;
         let service_name = &self.config.systemd_service_name;
-        run_command("systemctl", &["enable", service_name]).await?;
-        run_command("systemctl", &["start", service_name]).await
+        systemctl::execute(&["enable", service_name]).await?;
+        systemctl::execute(&["start", service_name]).await
     }
 
     async fn write_service_file(&self) -> Result<(), MonitorError> {

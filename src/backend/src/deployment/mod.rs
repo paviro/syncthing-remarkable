@@ -3,7 +3,6 @@ pub mod client;
 pub mod download;
 pub mod installer;
 pub mod progress;
-pub mod system;
 pub mod types;
 pub mod updater;
 

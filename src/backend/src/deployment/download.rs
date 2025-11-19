@@ -18,7 +18,7 @@ pub async fn download_to_path(
     progress_tx: Option<DownloadProgressSender>,
 ) -> Result<(), MonitorError> {
     let timeout = Duration::from_secs(DOWNLOAD_TIMEOUT_SECS);
-    let mut request = client.get(url).timeout(timeout);
+    let request = client.get(url).timeout(timeout);
 
     let mut response = request.send().await?.error_for_status()?;
     let mut file = File::create(destination).await?;

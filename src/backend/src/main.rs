@@ -5,6 +5,7 @@ mod deployment;
 mod filesystem;
 mod status_report;
 mod syncthing_client;
+mod systemctl;
 mod systemd;
 mod types;
 mod utils;
@@ -12,7 +13,7 @@ use appload_client::{
     AppLoad, AppLoadBackend, BackendReplier, Message, MSG_SYSTEM_NEW_COORDINATOR,
 };
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -26,8 +27,8 @@ use crate::deployment::{
     UpdateStatus, Updater,
 };
 use crate::syncthing_client::SyncthingClient;
-use crate::systemd::{control_syncthing_service, query_systemd_status};
-use crate::types::{MonitorError, SystemdStatus};
+use crate::systemd::{control_service, ServiceAction};
+use crate::types::MonitorError;
 
 const MSG_CONTROL_REQUEST: u32 = 2;
 const MSG_INSTALL_TRIGGER: u32 = 3;
@@ -154,7 +155,7 @@ impl AppLoadBackend for SyncthingBackend {
             }
             MSG_CONTROL_REQUEST => {
                 match serde_json::from_str::<ControlRequest>(&message.contents) {
-                    Ok(req) => match control_syncthing_service(&self.config, req.action).await {
+                    Ok(req) => match control_service(&self.config, req.action).await {
                         Ok(result) => {
                             let payload = json!({
                                 "ok": true,
@@ -270,38 +271,6 @@ struct GuiAddressToggleRequest {
     address: String,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub(crate) enum ServiceAction {
-    Start,
-    Stop,
-    Restart,
-    Enable,
-    Disable,
-}
-
-impl ServiceAction {
-    pub(crate) fn as_str(&self) -> &'static str {
-        match self {
-            ServiceAction::Start => "start",
-            ServiceAction::Stop => "stop",
-            ServiceAction::Restart => "restart",
-            ServiceAction::Enable => "enable",
-            ServiceAction::Disable => "disable",
-        }
-    }
-
-    pub(crate) fn past_tense(&self) -> &'static str {
-        match self {
-            ServiceAction::Start => "started",
-            ServiceAction::Stop => "stopped",
-            ServiceAction::Restart => "restarted",
-            ServiceAction::Enable => "enabled",
-            ServiceAction::Disable => "disabled",
-        }
-    }
-}
-
 impl SyncthingBackend {
     fn ensure_realtime_updates(&mut self, functionality: &BackendReplier<Self>) {
         if !task_is_running(&self.realtime_task) {
@@ -316,7 +285,18 @@ impl SyncthingBackend {
             let config = self.config.clone();
             let replier = functionality.clone();
             self.systemd_monitor_task = Some(tokio::spawn(async move {
-                drive_systemd_monitor(replier, config).await;
+                crate::systemd::monitor_service(
+                    config,
+                    SYSTEMD_MONITOR_INTERVAL_SECS,
+                    move || {
+                        let replier = replier.clone();
+                        tokio::spawn(async move {
+                            let mut backend = replier.backend.lock().await;
+                            backend.send_status(&replier, "systemd-monitor").await;
+                        });
+                    },
+                )
+                .await;
             }));
         }
     }
@@ -644,36 +624,3 @@ async fn drive_syncthing_stream(functionality: BackendReplier<SyncthingBackend>,
     }
 }
 
-async fn drive_systemd_monitor(
-    functionality: BackendReplier<SyncthingBackend>,
-    config: Config,
-) {
-    let mut ticker = tokio::time::interval(Duration::from_secs(SYSTEMD_MONITOR_INTERVAL_SECS));
-    let mut last_status: Option<SystemdStatus> = None;
-
-    loop {
-        ticker.tick().await;
-        let status = query_systemd_status(&config).await;
-        let changed = match &last_status {
-            None => true,
-            Some(previous) => systemd_state_changed(previous, &status),
-        };
-
-        if changed {
-            let mut backend = functionality.backend.lock().await;
-            backend
-                .send_status(&functionality, "systemd-monitor")
-                .await;
-        }
-
-        last_status = Some(status);
-    }
-}
-
-fn systemd_state_changed(previous: &SystemdStatus, current: &SystemdStatus) -> bool {
-    previous.active_state != current.active_state
-        || previous.sub_state != current.sub_state
-        || previous.result != current.result
-        || previous.unit_file_state != current.unit_file_state
-        || previous.pid != current.pid
-}

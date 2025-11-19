@@ -3,7 +3,7 @@ use tracing::warn;
 
 use crate::config::Config;
 use crate::syncthing_client::SyncthingClient;
-use crate::systemd::query_systemd_status;
+use crate::systemd::query_status;
 use crate::types::{MonitorError, StatusPayload, SyncthingOverview};
 
 pub async fn build_status_payload(
@@ -12,7 +12,7 @@ pub async fn build_status_payload(
     reason: &str,
 ) -> StatusPayload {
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
-    let systemd = query_systemd_status(config).await;
+    let systemd = query_status(config).await;
 
     let (syncthing, folders, peers, gui_address) = match ensure_client(config, client_slot).await {
         Ok(client) => {
