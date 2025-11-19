@@ -467,7 +467,6 @@ fn humanize_folder_state(
     paused: bool,
     state: Option<&str>,
     need_bytes: Option<u64>,
-    global_bytes: Option<u64>,
 ) -> FolderStateInfo {
     if paused {
         return FolderStateInfo::new("Paused", FolderStateCode::Paused);
@@ -489,13 +488,6 @@ fn humanize_folder_state(
             return FolderStateInfo::new("Scanning", FolderStateCode::Scanning);
         }
         if state_value.eq_ignore_ascii_case("syncing") {
-            if let (Some(global), Some(need)) = (global_bytes, need_bytes) {
-                if global > 0 && need > 0 {
-                    let done = 100.0 - ((need as f64 / global as f64) * 100.0);
-                    let label = format!("Syncing ({:.1}%)", done.clamp(0.0, 100.0));
-                    return FolderStateInfo::new(label, FolderStateCode::Syncing);
-                }
-            }
             return FolderStateInfo::new("Syncing", FolderStateCode::Syncing);
         }
         if state_value.eq_ignore_ascii_case("idle") {
