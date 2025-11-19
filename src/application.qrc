@@ -6,6 +6,7 @@
         <file>ui/FolderListPanel.qml</file>
         <file>ui/StatusFooter.qml</file>
         <file>ui/InstallerPage.qml</file>
+        <file>ui/SettingsOverlay.qml</file>
         <file>icon.png</file>
     </qresource>
 </RCC>

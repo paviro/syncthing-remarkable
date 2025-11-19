@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use tokio::process::Command;
 
 use crate::config::Config;
+use crate::filesystem;
 use crate::types::{MonitorError, SystemdStatus};
 use crate::ServiceAction;
 
@@ -70,6 +71,47 @@ pub async fn control_syncthing_service(
     action: ServiceAction,
 ) -> Result<String, MonitorError> {
     let service_name = &config.systemd_service_name;
+    
+    // Enable/disable operations need filesystem to be writable
+    let needs_remount = matches!(action, ServiceAction::Enable | ServiceAction::Disable);
+    
+    if needs_remount {
+        control_service_with_remount(service_name, action).await
+    } else {
+        execute_systemctl_command(service_name, action).await
+    }
+}
+
+/// Execute systemctl command with filesystem remounting for enable/disable
+async fn control_service_with_remount(
+    service_name: &str,
+    action: ServiceAction,
+) -> Result<String, MonitorError> {
+    // Remount filesystem as read-write, track if it was read-only before
+    let was_readonly = filesystem::remount_root_rw().await?;
+    
+    // Try to unmount /etc overlay if it exists
+    if let Err(err) = filesystem::unmount_etc_if_needed().await {
+        eprintln!("Warning: failed to unmount /etc: {}", err);
+        // Continue anyway, might not be critical
+    }
+    
+    // Execute the systemctl command
+    let result = execute_systemctl_command(service_name, action).await;
+    
+    // Restore read-only mount only if it was read-only before
+    if let Err(restore_err) = filesystem::restore_mounts_if_needed(was_readonly).await {
+        eprintln!("Failed to restore mounts after systemctl operation: {}", restore_err);
+    }
+    
+    result
+}
+
+/// Execute a systemctl command without remounting
+async fn execute_systemctl_command(
+    service_name: &str,
+    action: ServiceAction,
+) -> Result<String, MonitorError> {
     let output = Command::new("systemctl")
         .arg(action.as_str())
         .arg(service_name)

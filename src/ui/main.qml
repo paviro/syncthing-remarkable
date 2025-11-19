@@ -138,6 +138,8 @@ Rectangle {
                 title: "Syncthing"
                 lastUpdated: root.lastUpdated
                 fontScale: root.fontScale
+                
+                onSettingsClicked: settingsOverlay.show()
             }
 
             ServiceStatusCard {
@@ -180,6 +182,20 @@ Rectangle {
                 root.unloading()
                 root.close()
             }
+        }
+    }
+
+    SettingsOverlay {
+        id: settingsOverlay
+        anchors.fill: parent
+        fontScale: root.fontScale
+        serviceStatus: root.serviceStatus
+        controlBusy: root.controlBusy
+
+        onCloseRequested: settingsOverlay.hide()
+        
+        onAutostartToggleRequested: function(enable) {
+            controlService(enable ? "enable" : "disable")
         }
     }
 }

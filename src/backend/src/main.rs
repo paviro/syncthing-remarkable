@@ -1,4 +1,5 @@
 mod config;
+mod filesystem;
 mod installer;
 mod status_report;
 mod syncthing_client;
@@ -160,26 +161,32 @@ struct ControlRequest {
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-enum ServiceAction {
+pub(crate) enum ServiceAction {
     Start,
     Stop,
     Restart,
+    Enable,
+    Disable,
 }
 
 impl ServiceAction {
-    fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match self {
             ServiceAction::Start => "start",
             ServiceAction::Stop => "stop",
             ServiceAction::Restart => "restart",
+            ServiceAction::Enable => "enable",
+            ServiceAction::Disable => "disable",
         }
     }
 
-    fn past_tense(&self) -> &'static str {
+    pub(crate) fn past_tense(&self) -> &'static str {
         match self {
             ServiceAction::Start => "started",
             ServiceAction::Stop => "stopped",
             ServiceAction::Restart => "restarted",
+            ServiceAction::Enable => "enabled",
+            ServiceAction::Disable => "disabled",
         }
     }
 }

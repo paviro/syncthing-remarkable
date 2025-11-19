@@ -12,6 +12,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
 use crate::config::Config;
+use crate::filesystem;
 use crate::types::MonitorError;
 
 const RELEASE_API_URL: &str = "https://api.github.com/repos/syncthing/syncthing/releases/latest";
@@ -84,9 +85,9 @@ impl Installer {
     }
 
     pub async fn install_service(&self) -> Result<(), MonitorError> {
-        self.remount_root_rw().await?;
+        let was_readonly = filesystem::remount_root_rw().await?;
         let service_result = self.install_service_inner().await;
-        let restore_result = self.restore_mounts().await;
+        let restore_result = filesystem::restore_mounts_if_needed(was_readonly).await;
 
         if let Err(err) = &restore_result {
             eprintln!("Failed to restore mounts after installer run: {err}");
@@ -186,22 +187,10 @@ impl Installer {
             })
     }
 
-    async fn remount_root_rw(&self) -> Result<(), MonitorError> {
-        run_command("mount", &["-o", "remount,rw", "/"]).await
-    }
-
-    async fn restore_mounts(&self) -> Result<(), MonitorError> {
-        run_command("mount", &["-o", "remount,ro", "/"]).await?;
-        Ok(())
-    }
-
     async fn install_service_inner(&self) -> Result<(), MonitorError> {
-        if let Err(err) = run_command("umount", &["-R", "/etc"]).await {
-            if !is_umount_already_inactive(&err) {
-                return Err(err);
-            } else {
-                eprintln!("Installer: /etc already unmounted, continuing");
-            }
+        if let Err(err) = filesystem::unmount_etc_if_needed().await {
+            eprintln!("Warning during installer: {}", err);
+            // Continue anyway
         }
         self.write_service_file().await?;
         run_command("systemctl", &["daemon-reload"]).await?;
@@ -284,16 +273,4 @@ async fn run_command(command: &str, args: &[&str]) -> Result<(), MonitorError> {
             command, args, stderr
         )
     }))
-}
-
-fn is_umount_already_inactive(err: &MonitorError) -> bool {
-    match err {
-        MonitorError::Config(msg) => {
-            msg.contains("not mounted")
-                || msg.contains("not mounted.")
-                || msg.contains("not mounted, cannot")
-                || msg.contains("isn't mounted")
-        }
-        _ => false,
-    }
 }
