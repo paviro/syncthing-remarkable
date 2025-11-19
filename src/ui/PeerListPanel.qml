@@ -201,49 +201,66 @@ Item {
                             }
                         }
 
+                        Item {
+                            width: parent.width
+                            height: peerCard.expanded ? 0 : 0.5
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: peerCard.expanded ? 2 : 0
+                            color: "#aeb8cf"
+                            visible: peerCard.expanded
+                        }
+
                         Column {
                             id: peerDetails
                             spacing: 12
                             visible: peerCard.expanded
 
-                        Column {
-                            spacing: 4
+                            Column {
+                                spacing: 4
 
-                            Text {
-                                text: modelData.address ? `Address ${modelData.address}` : (modelData.connected ? "" : `Last seen ${peersPanel.formatTimeAgo(modelData.last_seen)}`)
-                                font.pointSize: fs(14)
-                                color: "#2b3146"
-                                visible: !!modelData.address || !modelData.connected
-                            }
-
-                            Text {
-                                text: modelData.client_version ? `Client ${modelData.client_version}` : ""
-                                font.pointSize: fs(14)
-                                color: "#2b3146"
-                                visible: !!modelData.client_version
-                            }
-                        }
-
-                        Column {
-                            spacing: 4
-                            visible: (modelData.folders || []).length > 0
-
-                            Text {
-                                text: "Folder progress"
-                                font.pointSize: fs(16)
-                                font.bold: true
-                                color: "#111c34"
-                            }
-
-                            Repeater {
-                                model: (modelData.folders || []).slice(0, 4)
-                                delegate: Text {
-                                    text: `${modelData.folder_label}: ${modelData.completion !== undefined ? peersPanel.formatPercent(modelData.completion || 0) : (modelData.need_bytes !== undefined ? peersPanel.formatBytes(modelData.need_bytes) + " pending" : "n/a")}`
+                                Text {
+                                    text: modelData.address ? `Address ${modelData.address}` : (modelData.connected ? "" : `Last seen ${peersPanel.formatTimeAgo(modelData.last_seen)}`)
                                     font.pointSize: fs(14)
                                     color: "#2b3146"
+                                    visible: !!modelData.address || !modelData.connected
+                                }
+
+                                Text {
+                                    text: modelData.client_version ? `Client ${modelData.client_version}` : ""
+                                    font.pointSize: fs(14)
+                                    color: "#2b3146"
+                                    visible: !!modelData.client_version
                                 }
                             }
-                        }
+
+                            Column {
+                                spacing: 4
+                                visible: (modelData.folders || []).length > 0
+
+                                Text {
+                                    text: "Folder progress"
+                                    font.pointSize: fs(16)
+                                    font.bold: true
+                                    color: "#111c34"
+                                }
+
+                                Repeater {
+                                    model: (modelData.folders || []).slice(0, 4)
+                                    delegate: Text {
+                                        text: `${modelData.folder_label}: ${modelData.completion !== undefined ? peersPanel.formatPercent(modelData.completion || 0) : (modelData.need_bytes !== undefined ? peersPanel.formatBytes(modelData.need_bytes) + " pending" : "n/a")}`
+                                        font.pointSize: fs(14)
+                                        color: "#2b3146"
+                                    }
+                                }
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: peerCard.expanded ? 8 : 0
+                            }
                         }
                     }
 

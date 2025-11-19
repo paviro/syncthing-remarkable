@@ -254,6 +254,18 @@ Item {
                             }
                         }
 
+                        Item {
+                            width: parent.width
+                            height: folderCard.expanded ? 0 : 0.5
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: folderCard.expanded ? 2 : 0
+                            color: "#aeb8cf"
+                            visible: folderCard.expanded
+                        }
+
                         Column {
                             id: folderDetails
                             spacing: 4
@@ -280,6 +292,11 @@ Item {
                                 text: "No recent changes"
                                 font.pointSize: fs(14)
                                 color: "#4f566a"
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: folderCard.expanded ? 8 : 0
                             }
                         }
                     }
