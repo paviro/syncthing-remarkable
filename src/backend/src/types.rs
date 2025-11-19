@@ -65,6 +65,7 @@ pub enum FolderStateCode {
     Paused,
     Error,
     WaitingToScan,
+    WaitingToSync,
     Scanning,
     PreparingToSync,
     Syncing,

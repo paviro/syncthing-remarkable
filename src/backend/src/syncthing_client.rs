@@ -478,6 +478,9 @@ fn humanize_folder_state(
         if normalized.contains("waiting") && normalized.contains("scan") {
             return FolderStateInfo::new("Waiting to scan", FolderStateCode::WaitingToScan);
         }
+        if normalized.contains("waiting") && normalized.contains("sync") {
+            return FolderStateInfo::new("Waiting to sync", FolderStateCode::WaitingToSync);
+        }
         if normalized.contains("preparing") && normalized.contains("sync") {
             return FolderStateInfo::new("Preparing to sync", FolderStateCode::PreparingToSync);
         }
