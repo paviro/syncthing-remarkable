@@ -2,21 +2,29 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::time::Duration;
 
-use chrono::Utc;
 use reqwest::Client;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
-use tokio::fs;
-
-use crate::config::Config;
-use crate::types::{
-    FolderChange, FolderPayload, FolderPeerNeedSummary, FolderStateCode, MonitorError,
-    PeerFolderState, PeerPayload, SyncthingOverview,
-};
 use tracing::warn;
 
-const RECENT_EVENTS_LIMIT: u32 = 200;
+use crate::config::Config;
+use crate::types::MonitorError;
+
+use super::types::{
+    FolderChange, FolderPayload, FolderPeerNeedSummary, PeerPayload, SyncthingOverview,
+};
+
+use super::helpers::{
+    compute_completion, format_relative_time, humanize_folder_state, is_file_event, load_api_key,
+    RECENT_EVENTS_LIMIT,
+};
+use super::queries::{CompletionQuery, EventStreamQuery, EventsQuery, FolderStatusQuery};
+use super::types::{
+    ConnectionsResponse, DeviceConfig, FolderConfig, PeerProgress, RemoteCompletion,
+    SyncthingConfig, SyncthingEvent,
+};
+
 const RECENT_FILES_PER_FOLDER: usize = 4;
 
 #[derive(Clone)]
@@ -411,155 +419,6 @@ fn push_unique_url(list: &mut Vec<String>, candidate: String) {
     }
 }
 
-#[derive(Serialize)]
-struct FolderStatusQuery<'a> {
-    folder: &'a str,
-}
-
-#[derive(Serialize)]
-struct EventsQuery {
-    since: u64,
-    limit: u32,
-}
-
-#[derive(Serialize)]
-struct EventStreamQuery<'a> {
-    since: u64,
-    limit: u32,
-    timeout: u64,
-    #[serde(rename = "events", skip_serializing_if = "Option::is_none")]
-    events: Option<&'a [&'a str]>,
-}
-
-#[derive(Serialize)]
-struct CompletionQuery<'a> {
-    device: &'a str,
-    folder: &'a str,
-}
-
-#[derive(Debug, Deserialize)]
-struct SyncthingConfig {
-    #[serde(default)]
-    folders: Vec<FolderConfig>,
-    #[serde(default)]
-    devices: Vec<DeviceConfig>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct FolderConfig {
-    id: String,
-    #[serde(default)]
-    label: Option<String>,
-    #[serde(default)]
-    path: Option<String>,
-    #[serde(default)]
-    paused: Option<bool>,
-    #[serde(default)]
-    devices: Vec<FolderDevice>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct FolderDevice {
-    #[serde(rename = "deviceID")]
-    device_id: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct DeviceConfig {
-    #[serde(rename = "deviceID")]
-    device_id: String,
-    #[serde(default)]
-    name: Option<String>,
-    #[serde(default)]
-    paused: Option<bool>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-struct ConnectionsResponse {
-    #[serde(default)]
-    connections: HashMap<String, ConnectionState>,
-}
-
-#[derive(Debug, Deserialize, Clone, Default)]
-struct ConnectionState {
-    #[serde(default)]
-    connected: bool,
-    #[serde(default)]
-    paused: bool,
-    #[serde(default, rename = "clientVersion")]
-    client_version: Option<String>,
-    #[serde(default)]
-    address: Option<String>,
-    #[serde(default, rename = "lastSeen")]
-    last_seen: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SyncthingEvent {
-    id: u64,
-    #[serde(rename = "type")]
-    event_type: String,
-    time: String,
-    data: Value,
-}
-
-#[derive(Debug, Deserialize)]
-struct RemoteCompletion {
-    #[allow(dead_code)]
-    completion: Option<f64>,
-    #[serde(rename = "needBytes")]
-    need_bytes: Option<u64>,
-}
-
-#[derive(Default, Clone)]
-struct PeerProgress {
-    total_completion: f64,
-    completion_samples: u32,
-    total_need_bytes: u64,
-    folders: Vec<PeerFolderState>,
-}
-
-impl PeerProgress {
-    fn record(&mut self, folder: &FolderConfig, completion: &RemoteCompletion) {
-        if let Some(value) = completion.completion {
-            self.total_completion += value;
-            self.completion_samples = self.completion_samples.saturating_add(1);
-        }
-        if let Some(need) = completion.need_bytes {
-            self.total_need_bytes = self.total_need_bytes.saturating_add(need);
-        }
-        self.folders.push(PeerFolderState {
-            folder_id: folder.id.clone(),
-            folder_label: folder.label.clone().unwrap_or_else(|| folder.id.clone()),
-            completion: completion.completion,
-            need_bytes: completion.need_bytes,
-        });
-    }
-
-    fn avg_completion(&self) -> Option<f64> {
-        if self.completion_samples == 0 {
-            None
-        } else {
-            let mut average = self.total_completion / self.completion_samples as f64;
-            if self.total_need_bytes > 0 && average > 99.99 {
-                average = 99.99;
-            }
-            if average > 100.0 {
-                average = 100.0;
-            }
-            Some(average)
-        }
-    }
-
-    fn outstanding_need(&self) -> Option<u64> {
-        if self.total_need_bytes > 0 {
-            Some(self.total_need_bytes)
-        } else {
-            None
-        }
-    }
-}
-
 impl SyncthingOverview {
     pub(crate) fn from_value(value: &Value) -> Self {
         Self {
@@ -606,7 +465,7 @@ impl SyncthingOverview {
 }
 
 impl FolderPayload {
-    fn from_parts(
+    pub fn from_parts(
         folder: &FolderConfig,
         status: &Value,
         last_changes: Vec<FolderChange>,
@@ -641,190 +500,3 @@ impl FolderPayload {
     }
 }
 
-impl SyncthingEvent {
-    fn folder_id(&self) -> Option<&str> {
-        self.data.get("folder").and_then(|v| v.as_str())
-    }
-
-    fn file_name(&self) -> Option<String> {
-        if let Some(item) = self.data.get("item").and_then(|v| v.as_str()) {
-            return Some(item.to_string());
-        }
-        if let Some(file) = self.data.get("file").and_then(|v| v.as_str()) {
-            return Some(file.to_string());
-        }
-        if let Some(items) = self.data.get("items").and_then(|v| v.as_array()) {
-            for entry in items {
-                if let Some(path) = entry
-                    .get("path")
-                    .or_else(|| entry.get("item"))
-                    .or_else(|| entry.get("file"))
-                    .and_then(|v| v.as_str())
-                {
-                    return Some(path.to_string());
-                }
-            }
-        }
-        if let Some(files) = self.data.get("files").and_then(|v| v.as_array()) {
-            for entry in files {
-                if let Some(path) = entry
-                    .get("path")
-                    .or_else(|| entry.get("item"))
-                    .or_else(|| entry.get("file"))
-                    .and_then(|v| v.as_str())
-                {
-                    return Some(path.to_string());
-                }
-            }
-        }
-        None
-    }
-
-    fn action(&self) -> Option<String> {
-        if let Some(action) = self.data.get("action").and_then(|v| v.as_str()) {
-            return Some(action.to_string());
-        }
-        if let Some(items) = self.data.get("items").and_then(|v| v.as_array()) {
-            for entry in items {
-                if let Some(action) = entry.get("action").and_then(|v| v.as_str()) {
-                    return Some(action.to_string());
-                }
-            }
-        }
-        None
-    }
-
-    fn origin(&self) -> Option<String> {
-        self.data
-            .get("device")
-            .or_else(|| self.data.get("peerID"))
-            .or_else(|| self.data.get("id"))
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-    }
-}
-
-fn is_file_event(event_type: &str) -> bool {
-    matches!(
-        event_type,
-        "ItemFinished"
-            | "ItemStarted"
-            | "LocalIndexUpdated"
-            | "RemoteIndexUpdated"
-            | "ItemDownloaded"
-            | "FolderSummary"
-            | "FolderCompletion"
-    )
-}
-
-fn compute_completion(global_bytes: Option<u64>, need_bytes: Option<u64>) -> f64 {
-    match (global_bytes, need_bytes) {
-        (Some(global), Some(need)) if global > 0 => {
-            let complete = global.saturating_sub(need);
-            ((complete as f64 / global as f64) * 100.0).clamp(0.0, 100.0)
-        }
-        (Some(global), None) if global > 0 => 100.0,
-        _ => 0.0,
-    }
-}
-
-fn humanize_folder_state(
-    paused: bool,
-    state: Option<&str>,
-    need_bytes: Option<u64>,
-) -> FolderStateInfo {
-    if paused {
-        return FolderStateInfo::new("Paused", FolderStateCode::Paused);
-    }
-
-    if let Some(state_value) = state {
-        let normalized = state_value.to_ascii_lowercase();
-        if normalized.contains("waiting") && normalized.contains("scan") {
-            return FolderStateInfo::new("Waiting to scan", FolderStateCode::WaitingToScan);
-        }
-        if normalized.contains("waiting") && normalized.contains("sync") {
-            return FolderStateInfo::new("Waiting to sync", FolderStateCode::WaitingToSync);
-        }
-        if normalized.contains("preparing") && normalized.contains("sync") {
-            return FolderStateInfo::new("Preparing to sync", FolderStateCode::PreparingToSync);
-        }
-
-        if state_value.eq_ignore_ascii_case("scanning") {
-            return FolderStateInfo::new("Scanning", FolderStateCode::Scanning);
-        }
-        if state_value.eq_ignore_ascii_case("syncing") {
-            return FolderStateInfo::new("Syncing", FolderStateCode::Syncing);
-        }
-        if state_value.eq_ignore_ascii_case("idle") {
-            if need_bytes.unwrap_or(0) == 0 {
-                return FolderStateInfo::new("Up to date", FolderStateCode::UpToDate);
-            }
-            return FolderStateInfo::new("Idle / pending changes", FolderStateCode::PendingChanges);
-        }
-        if state_value.eq_ignore_ascii_case("error") {
-            return FolderStateInfo::new("Error", FolderStateCode::Error);
-        }
-    }
-
-    if need_bytes.unwrap_or(0) == 0 {
-        FolderStateInfo::new("Up to date", FolderStateCode::UpToDate)
-    } else {
-        FolderStateInfo::new("Unknown state", FolderStateCode::Unknown)
-    }
-}
-
-struct FolderStateInfo {
-    label: String,
-    code: FolderStateCode,
-}
-
-impl FolderStateInfo {
-    fn new(label: impl Into<String>, code: FolderStateCode) -> Self {
-        Self {
-            label: label.into(),
-            code,
-        }
-    }
-}
-
-fn format_relative_time(iso_time: &str) -> String {
-    match chrono::DateTime::parse_from_rfc3339(iso_time) {
-        Ok(parsed) => {
-            let now = Utc::now();
-            let duration = now.signed_duration_since(parsed.with_timezone(&Utc));
-            if duration.num_seconds() < 60 {
-                "just now".to_string()
-            } else if duration.num_minutes() < 60 {
-                format!("{} min ago", duration.num_minutes())
-            } else if duration.num_hours() < 24 {
-                format!("{} h ago", duration.num_hours())
-            } else {
-                format!("{} d ago", duration.num_days())
-            }
-        }
-        Err(_) => iso_time.to_string(),
-    }
-}
-
-async fn load_api_key(config: &Config) -> Result<String, MonitorError> {
-    if let Ok(value) = env::var("SYNCTHING_API_KEY") {
-        if !value.trim().is_empty() {
-            return Ok(value);
-        }
-    }
-
-    let config_xml_path = config.syncthing_config_xml_path();
-    let contents = fs::read_to_string(&config_xml_path)
-        .await
-        .map_err(|err| MonitorError::Io(err))?;
-    extract_api_key(&contents).ok_or(MonitorError::MissingApiKey)
-}
-
-fn extract_api_key(contents: &str) -> Option<String> {
-    let start_tag = "<apikey>";
-    let end_tag = "</apikey>";
-    let start = contents.find(start_tag)? + start_tag.len();
-    let rest = &contents[start..];
-    let end = rest.find(end_tag)?;
-    Some(rest[..end].trim().to_string())
-}
