@@ -8,13 +8,15 @@ A [rm-appload](https://github.com/asivery/rm-appload) Syncthing application for 
 - 🎛️ **Service Control** - Start, stop, and restart Syncthing service with a single tap
 - 🚀 **Auto-Installer** - Automatically downloads and installs the latest Syncthing release
 
+## Screenshots
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/06cb7989-047f-41c7-bb1f-0346cd4ed526" alt="installer" width="400"/>
+  <img src="https://github.com/user-attachments/assets/652a7c1f-95f5-40b1-b962-f322f76fed67" alt="app" width="400"/>
+</p>
+
 ## Tested Devices
 
 - reMarkable Paper Pro Move
-
-## Screenshots
-![installer](https://github.com/user-attachments/assets/06cb7989-047f-41c7-bb1f-0346cd4ed526)
-![app](https://github.com/user-attachments/assets/652a7c1f-95f5-40b1-b962-f322f76fed67)
 
 
 ## How to Install
