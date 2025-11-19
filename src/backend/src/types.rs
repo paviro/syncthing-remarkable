@@ -30,7 +30,7 @@ pub struct StatusPayload {
     pub gui_address: Option<String>,
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Default, Clone, PartialEq, Eq)]
 pub struct SystemdStatus {
     pub name: String,
     pub active_state: Option<String>,

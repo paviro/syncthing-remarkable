@@ -22,8 +22,8 @@ use tracing_subscriber::EnvFilter;
 use crate::config::Config;
 use crate::installer::{Installer, InstallerStatus};
 use crate::syncthing_client::SyncthingClient;
-use crate::systemd::control_syncthing_service;
-use crate::types::MonitorError;
+use crate::systemd::{control_syncthing_service, query_systemd_status};
+use crate::types::{MonitorError, SystemdStatus};
 use crate::updater::{UpdateStatus, Updater};
 
 const MSG_CONTROL_REQUEST: u32 = 2;
@@ -45,6 +45,7 @@ const UPDATE_RESTART_DELAY_SECS: u64 = 10;
 const EVENT_STREAM_TIMEOUT_SECS: u64 = 30;
 const EVENT_HEARTBEAT_SECS: u64 = 5;
 const EVENT_RECONNECT_DELAY_SECS: u64 = 5;
+const SYSTEMD_MONITOR_INTERVAL_SECS: u64 = 5;
 
 #[tokio::main]
 async fn main() {
@@ -84,6 +85,7 @@ struct SyncthingBackend {
     update_pending_restart: bool,
     update_restart_seconds_remaining: Option<u32>,
     realtime_task: Option<JoinHandle<()>>,
+    systemd_monitor_task: Option<JoinHandle<()>>,
 }
 
 impl SyncthingBackend {
@@ -106,6 +108,7 @@ impl SyncthingBackend {
             update_pending_restart: false,
             update_restart_seconds_remaining: None,
             realtime_task: None,
+            systemd_monitor_task: None,
         }
     }
 
@@ -128,6 +131,13 @@ impl SyncthingBackend {
             error!(error = ?err, "Failed to send error message");
         }
     }
+}
+
+fn task_is_running(handle: &Option<JoinHandle<()>>) -> bool {
+    handle
+        .as_ref()
+        .map(|handle| !handle.is_finished())
+        .unwrap_or(false)
 }
 
 #[async_trait]
@@ -291,20 +301,21 @@ impl ServiceAction {
 
 impl SyncthingBackend {
     fn ensure_realtime_updates(&mut self, functionality: &BackendReplier<Self>) {
-        let already_running = self
-            .realtime_task
-            .as_ref()
-            .map(|handle| !handle.is_finished())
-            .unwrap_or(false);
-        if already_running {
-            return;
+        if !task_is_running(&self.realtime_task) {
+            let config = self.config.clone();
+            let replier = functionality.clone();
+            self.realtime_task = Some(tokio::spawn(async move {
+                drive_syncthing_stream(replier, config).await;
+            }));
         }
 
-        let config = self.config.clone();
-        let replier = functionality.clone();
-        self.realtime_task = Some(tokio::spawn(async move {
-            drive_syncthing_stream(replier, config).await;
-        }));
+        if !task_is_running(&self.systemd_monitor_task) {
+            let config = self.config.clone();
+            let replier = functionality.clone();
+            self.systemd_monitor_task = Some(tokio::spawn(async move {
+                drive_systemd_monitor(replier, config).await;
+            }));
+        }
     }
 
     async fn send_install_status(&self, functionality: &BackendReplier<Self>) {
@@ -557,4 +568,38 @@ async fn drive_syncthing_stream(functionality: BackendReplier<SyncthingBackend>,
             }
         }
     }
+}
+
+async fn drive_systemd_monitor(
+    functionality: BackendReplier<SyncthingBackend>,
+    config: Config,
+) {
+    let mut ticker = tokio::time::interval(Duration::from_secs(SYSTEMD_MONITOR_INTERVAL_SECS));
+    let mut last_status: Option<SystemdStatus> = None;
+
+    loop {
+        ticker.tick().await;
+        let status = query_systemd_status(&config).await;
+        let changed = match &last_status {
+            None => true,
+            Some(previous) => systemd_state_changed(previous, &status),
+        };
+
+        if changed {
+            let mut backend = functionality.backend.lock().await;
+            backend
+                .send_status(&functionality, "systemd-monitor")
+                .await;
+        }
+
+        last_status = Some(status);
+    }
+}
+
+fn systemd_state_changed(previous: &SystemdStatus, current: &SystemdStatus) -> bool {
+    previous.active_state != current.active_state
+        || previous.sub_state != current.sub_state
+        || previous.result != current.result
+        || previous.unit_file_state != current.unit_file_state
+        || previous.pid != current.pid
 }
