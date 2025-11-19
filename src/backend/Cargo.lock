@@ -1342,7 +1342,7 @@ dependencies = [
 
 [[package]]
 name = "syncthing-monitor-backend"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "appload-client",
  "async-trait",
