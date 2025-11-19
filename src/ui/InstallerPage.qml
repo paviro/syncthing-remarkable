@@ -283,14 +283,14 @@ Item {
                 }
             }
 
-            Flow {
+            Row {
                 width: parent.width
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 Rectangle {
                     id: installButton
-                    width: Math.max(220, Math.min(card.width, 420))
+                    width: Math.max(220, Math.min(card.width * 0.45, 420))
                     height: 72
                     radius: 14
                     border.width: 0
@@ -312,7 +312,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: Math.max(180, Math.min(card.width, 320))
+                    width: Math.max(220, Math.min(card.width * 0.45, 420))
                     height: 72
                     radius: 14
                     border.width: 0

@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.3
 Rectangle {
     id: overlay
     anchors.fill: parent
-    color: visible ? Qt.rgba(0, 0, 0, 0.2) : "transparent"
+    color: visible ? Qt.rgba(13/255, 18/255, 33/255, 0.45) : "transparent"
     visible: false
     z: 1000
 
@@ -16,6 +16,7 @@ Rectangle {
     property var updateCheckResult: null
     property var updateStatus: null
     property int updateRestartCountdown: 0
+    property color accentColor: "#1887f0"
 
     signal closeRequested()
     signal autostartToggleRequested(bool enable)
@@ -120,12 +121,12 @@ Rectangle {
     Rectangle {
         id: settingsCard
         anchors.centerIn: parent
-        width: Math.min(parent.width * 0.9, 800)
+        width: Math.min(parent.width * 0.9, 820)
         height: Math.min(parent.height * 0.9, contentColumn.implicitHeight + 80)
-        color: "white"
-        radius: 8
-        border.color: "#000000"
-        border.width: 3
+        color: "#f8f9fb"
+        radius: 30
+        border.color: "#4b536b"
+        border.width: 2
 
         MouseArea {
             anchors.fill: parent
@@ -144,41 +145,36 @@ Rectangle {
 
                 Text {
                     text: "Settings"
-                    font.pointSize: fs(36)
+                    font.pointSize: fs(30)
                     font.bold: true
-                    color: "#000000"
+                    color: "#08122e"
                 }
 
                 Item {
                     Layout.fillWidth: true
                 }
 
-                Button {
-                    text: "Close"
-                    font.pointSize: fs(26)
-                    flat: true
-                    visible: overlay.canCloseOverlay()
-                    onClicked: {
-                        if (overlay.canCloseOverlay()) {
-                            overlay.closeRequested()
-                        }
+                Rectangle {
+                    id: closeButton
+                    Layout.preferredWidth: 64
+                    Layout.preferredHeight: 64
+                    radius: 32
+                    color: overlay.canCloseOverlay() ? accentColor : "#9fa8c4"
+                    opacity: overlay.canCloseOverlay() ? 1 : 0.5
+                    border.width: 0
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u00D7"
+                        font.pointSize: fs(34)
+                        font.bold: true
+                        color: "#ffffff"
                     }
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: "#000000"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    background: Rectangle {
-                        color: "transparent"
-                        radius: 4
-                        border.color: "#000000"
-                        border.width: 2
-                        implicitWidth: 140
-                        implicitHeight: 60
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: overlay.canCloseOverlay()
+                        onClicked: overlay.closeRequested()
                     }
                 }
             }
@@ -186,7 +182,7 @@ Rectangle {
             Rectangle {
                 Layout.fillWidth: true
                 height: 2
-                color: "#000000"
+                color: "#5e667d"
             }
 
             ColumnLayout {
@@ -206,17 +202,17 @@ Rectangle {
 
                         Text {
                             text: "Autostart Syncthing"
-                            font.pointSize: fs(24)
+                            font.pointSize: fs(22)
                             font.bold: true
-                            color: "#000000"
+                            color: "#08122e"
                         }
 
                         Text {
                             text: isAutostartEnabled() 
                                 ? "Syncthing will start automatically when the device boots"
                                 : "Syncthing must be started manually"
-                            font.pointSize: fs(18)
-                            color: "#333333"
+                            font.pointSize: fs(16)
+                            color: "#1f2538"
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -226,7 +222,7 @@ Rectangle {
                         id: autostartSwitch
                         checked: isAutostartEnabled()
                         enabled: !controlBusy
-                        scale: 3.0
+                        scale: 2.2
                         Layout.alignment: Qt.AlignVCenter
                         Layout.rightMargin: 30
                         
@@ -240,8 +236,8 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.topMargin: 8
                     Layout.bottomMargin: 8
-                    height: 1
-                    color: "#cccccc"
+                    height: 2
+                    color: "#5e667d"
                 }
 
                 RowLayout {
@@ -256,17 +252,17 @@ Rectangle {
 
                         Text {
                             text: "Network Access"
-                            font.pointSize: fs(24)
+                            font.pointSize: fs(22)
                             font.bold: true
-                            color: "#000000"
+                            color: "#08122e"
                         }
 
                         Text {
                             text: isGuiAddressOpen() 
                                 ? "Syncthing web UI is accessible from other devices on the network"
                                 : "Syncthing web UI is only accessible from this device"
-                            font.pointSize: fs(18)
-                            color: "#333333"
+                            font.pointSize: fs(16)
+                            color: "#1f2538"
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -276,7 +272,7 @@ Rectangle {
                         id: networkAccessSwitch
                         checked: isGuiAddressOpen()
                         enabled: !controlBusy && guiAddress !== ""
-                        scale: 3.0
+                        scale: 2.2
                         Layout.alignment: Qt.AlignVCenter
                         Layout.rightMargin: 30
                         
@@ -291,8 +287,8 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.topMargin: 8
                     Layout.bottomMargin: 8
-                    height: 1
-                    color: "#cccccc"
+                    height: 2
+                    color: "#5e667d"
                 }
 
                 ColumnLayout {
@@ -311,15 +307,15 @@ Rectangle {
 
                             Text {
                                 text: "Update"
-                                font.pointSize: fs(24)
+                                font.pointSize: fs(22)
                                 font.bold: true
-                                color: "#000000"
+                                color: "#08122e"
                             }
 
                             Text {
                                 text: getUpdateStatusText()
-                                font.pointSize: fs(18)
-                                color: (updateStatus && updateStatus.error) ? "#cc0000" : "#333333"
+                                font.pointSize: fs(16)
+                                color: (updateStatus && updateStatus.error) ? "#a80c0c" : "#1f2538"
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -327,14 +323,14 @@ Rectangle {
 
                         Button {
                             text: getUpdateButtonLabel()
-                            font.pointSize: fs(22)
+                            font.pointSize: fs(20)
                             enabled: isUpdateButtonEnabled()
                             Layout.alignment: Qt.AlignVCenter
                             
                             contentItem: Text {
                                 text: parent.text
                                 font: parent.font
-                                color: "#000000"
+                                color: isRestartPending() ? accentColor : "#ffffff"
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -343,17 +339,18 @@ Rectangle {
                                 color: {
                                     if (!parent.enabled) return "#f5f5f5"
                                     if (isRestartPending()) {
-                                        return "transparent"
+                                        return "#e2e8fb"
                                     }
-                                    if (isUpdateAvailable()) {
-                                        return parent.pressed ? "#A1BA46" : '#c6f02c'
-                                    }
-                                    return parent.pressed ? "#e0e0e0" : "white"
+                                    return parent.pressed ? "#0f6cca" : accentColor
                                 }
-                                radius: 4
-                                border.color: "#000000"
+                                border.color: {
+                                    if (!parent.enabled) return "#d6ddeb"
+                                    if (isRestartPending()) return accentColor
+                                    return accentColor
+                                }
                                 border.width: 2
-                                implicitWidth: 140
+                                radius: 16
+                                implicitWidth: 160
                                 implicitHeight: 60
                             }
 

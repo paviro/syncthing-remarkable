@@ -2,46 +2,81 @@ import QtQuick 2.5
 import QtQuick.Controls 2.5
 import QtQuick.Layouts 1.3
 
-RowLayout {
+Rectangle {
     property string title: "Syncthing"
-    property string lastUpdated: ""
     property real fontScale: 1.0
+    property color accentColor: "#1887f0"
+    property color titleColor: "#0a1a3d"
 
-    signal settingsClicked()
+    signal closeRequested()
 
     Layout.fillWidth: true
-    spacing: 12
+    radius: 22
+    border.width: 2
+    border.color: "#4c5878"
+    color: "#eef0f4"
+    implicitHeight: contentRow.implicitHeight + 32
 
     function fs(value) {
         return value * fontScale
     }
 
+    RowLayout {
+        id: contentRow
+        anchors.fill: parent
+        anchors.margins: 20
+        spacing: 18
+
+        Image {
+            source: "qrc:/icon.png"
+            width: 60
+            height: 60
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            visible: parent.width > 500
+        }
+
+        ColumnLayout {
+            spacing: 4
+            Layout.fillWidth: true
+
     Text {
         text: title
-        font.pointSize: fs(34)
+                font.pointSize: fs(32)
         font.bold: true
-    }
+                color: titleColor
+                wrapMode: Text.WordWrap
+            }
 
-    Item {
-        Layout.fillWidth: true
-    }
+            Text {
+                text: "Monitor Syncthing service & folders"
+                font.pointSize: fs(18)
+                color: "#1d2844"
+                wrapMode: Text.WordWrap
+            }
+        }
 
-    Text {
-        text: lastUpdated ? "Updated " + lastUpdated : "Waiting for data..."
-        font.pointSize: fs(14)
-    }
+        Rectangle {
+            id: closeButton
+            width: 64
+            height: 64
+            radius: 32
+            color: accentColor
+            border.width: 0
+            opacity: 1
 
-    Button {
-        text: "⚙"
-        font.pointSize: fs(20)
-        flat: true
-        onClicked: settingsClicked()
-        
-        background: Rectangle {
-            color: parent.hovered ? "#f0f0f0" : "transparent"
-            radius: 4
-            implicitWidth: 48
-            implicitHeight: 48
+            Text {
+                anchors.centerIn: parent
+                text: "\u00D7"
+                font.pointSize: fs(38)
+                font.bold: true
+                color: "#ffffff"
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: closeRequested()
+            }
         }
     }
 }

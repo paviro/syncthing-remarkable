@@ -13,21 +13,22 @@ Rectangle {
     }
 
     anchors.fill: parent
-    color: "white"
+    color: backgroundColor
 
     property var serviceStatus: ({})
     property var syncthingStatus: ({})
     property var folders: []
-    property string statusMessage: ""
-    property string lastUpdated: ""
     property bool controlBusy: false
     property var installerStatus: null
-    property real fontScale: 1.15
+    property real fontScale: 1.25
     property bool installerPromptDismissed: false
     property string guiAddress: ""
     property var updateCheckResult: null
     property var updateStatus: null
     property int updateRestartCountdown: 0
+    property color backgroundColor: "#cbd1de"
+    property color accentColor: "#1887f0"
+    property color textColorPrimary: "#08122e"
     onInstallerStatusChanged: {
         if (!installerNeedsAttention()) {
             installerPromptDismissed = false
@@ -48,21 +49,16 @@ Rectangle {
                     serviceStatus = payload.systemd || {}
                     syncthingStatus = payload.syncthing || {}
                     folders = payload.folders || []
-                    lastUpdated = payload.fetched_at || ""
                     guiAddress = payload.gui_address || ""
-                    if ((syncthingStatus.errors || []).length === 0 && payload.reason === "manual") {
-                        statusMessage = "Refreshed"
-                    }
                 } catch (err) {
-                    statusMessage = `Failed to parse backend data: ${err}`
+                    console.warn("Failed to parse backend data", err)
                 }
                 break
             case 101:
                 try {
                     const control = JSON.parse(contents)
-                    statusMessage = control.message || "Control action completed"
                 } catch (errControl) {
-                    statusMessage = `Control response error: ${errControl}`
+                    console.warn("Control response error", errControl)
                 }
                 controlBusy = false
                 break
@@ -70,28 +66,22 @@ Rectangle {
                 try {
                     installerStatus = JSON.parse(contents)
                 } catch (errInstaller) {
-                    statusMessage = `Installer status error: ${errInstaller}`
+                    console.warn("Installer status error", errInstaller)
                 }
                 break
             case 103:
                 try {
                     const guiAddressResult = JSON.parse(contents)
-                    statusMessage = guiAddressResult.message || "GUI address updated"
                 } catch (errGuiAddress) {
-                    statusMessage = `GUI address response error: ${errGuiAddress}`
+                    console.warn("GUI address response error", errGuiAddress)
                 }
                 controlBusy = false
                 break
             case 104:
                 try {
                     updateCheckResult = JSON.parse(contents)
-                    if (updateCheckResult.update_available) {
-                        statusMessage = `Update available: ${updateCheckResult.latest_version}`
-                    } else {
-                        statusMessage = "App is up to date"
-                    }
                 } catch (errUpdate) {
-                    statusMessage = `Update check error: ${errUpdate}`
+                    console.warn("Update check error", errUpdate)
                 }
                 break
             case 105:
@@ -109,24 +99,20 @@ Rectangle {
                         restartCountdownTimer.stop()
                         updateRestartCountdown = 0
                     }
-                    if (updateStatus.progress_message) {
-                        statusMessage = updateStatus.progress_message
-                    }
                 } catch (errUpdateStatus) {
-                    statusMessage = `Update status error: ${errUpdateStatus}`
+                    console.warn("Update status error", errUpdateStatus)
                 }
                 break
             case 500:
                 try {
                     const errorPayload = JSON.parse(contents)
-                    statusMessage = errorPayload.message || "Backend error"
                 } catch (errBackend) {
-                    statusMessage = `Backend error: ${errBackend}`
+                    console.warn("Backend error payload parse issue", errBackend)
                 }
                 controlBusy = false
                 break
             default:
-                statusMessage = "Unhandled backend message"
+                console.warn("Unhandled backend message", type, contents)
                 break
             }
         }
@@ -206,20 +192,27 @@ Rectangle {
 
     StackLayout {
         anchors.fill: parent
-        anchors.margins: 32
         currentIndex: canShowInstallerPrompt() ? 1 : 0
 
-        ColumnLayout {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 24
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 36
+                spacing: 28
 
             HeaderBar {
                 title: "Syncthing"
-                lastUpdated: root.lastUpdated
                 fontScale: root.fontScale
+                    accentColor: root.accentColor
+                    titleColor: root.textColorPrimary
                 
-                onSettingsClicked: settingsOverlay.show()
+                onCloseRequested: {
+                    root.unloading()
+                    root.close()
+                }
             }
 
             ServiceStatusCard {
@@ -230,9 +223,10 @@ Rectangle {
                 installerStatus: root.installerStatus
                 installerAttentionRequired: root.installerNeedsAttention()
                 Layout.fillWidth: true
+                    accentColor: root.accentColor
 
                 onControlRequested: controlService(action)
-                onRefreshRequested: requestRefresh(reason)
+                onSettingsRequested: settingsOverlay.show()
             }
 
             FolderListPanel {
@@ -241,12 +235,9 @@ Rectangle {
                 syncthingStatus: root.syncthingStatus
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                    accentColor: root.accentColor
             }
 
-            StatusFooter {
-                fontScale: root.fontScale
-                statusMessage: root.statusMessage
-                controlBusy: root.controlBusy
             }
         }
 
@@ -269,6 +260,7 @@ Rectangle {
         id: settingsOverlay
         anchors.fill: parent
         fontScale: root.fontScale
+        accentColor: root.accentColor
         serviceStatus: root.serviceStatus
         controlBusy: root.controlBusy
         guiAddress: root.guiAddress
