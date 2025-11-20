@@ -113,6 +113,12 @@ impl SyncthingClient {
 
         self.http.put_json("rest/config", &config).await
     }
+
+    /// Restarts Syncthing via the API.
+    /// Sends a POST request to /rest/system/restart which will cause Syncthing to restart itself.
+    pub async fn restart(&mut self) -> Result<(), MonitorError> {
+        self.http.post("/rest/system/restart").await
+    }
 }
 
 /// Adds a URL to the list only if it's not already present.

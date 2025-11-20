@@ -87,6 +87,30 @@ impl HttpClient {
         Ok(())
     }
 
+    /// Performs a POST request with an empty body.
+    pub async fn post(&mut self, path: &str) -> Result<(), MonitorError> {
+        let base = &self.base_urls[self.current_idx.min(self.base_urls.len().saturating_sub(1))];
+        let url = format!("{}/{}", base.trim_end_matches('/'), path.trim_start_matches('/'));
+
+        let response = self
+            .http
+            .post(url)
+            .header("X-API-Key", &self.api_key)
+            .send()
+            .await
+            .map_err(MonitorError::Http)?;
+
+        if !response.status().is_success() {
+            return Err(MonitorError::Syncthing(format!(
+                "{} returned {}",
+                path,
+                response.status()
+            )));
+        }
+
+        Ok(())
+    }
+
     /// Creates a new HttpClient with the given configuration.
     pub fn new(api_key: String, http: Client, base_urls: Vec<String>) -> Self {
         Self {

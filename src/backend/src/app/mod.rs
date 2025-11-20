@@ -92,7 +92,7 @@ impl AppLoadBackend for Backend {
             }
             MSG_CONTROL_REQUEST => {
                 match serde_json::from_str::<ControlRequest>(&message.contents) {
-                    Ok(req) => self.handle_systemd_control(functionality, req).await,
+                    Ok(req) => self.handle_service_control(functionality, req).await,
                     Err(err) => {
                         self.send_error(functionality, &format!("Invalid control payload: {err}"))
                     }
