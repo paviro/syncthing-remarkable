@@ -226,7 +226,7 @@ Item {
                             }
 
                             Text {
-                                text: "•"
+                                text: "·"
                                 font.pointSize: fs(16)
                                 color: "#232a40"
                                 visible: progressRow.sizeSummary.length > 0
@@ -240,7 +240,7 @@ Item {
                             }
 
                             Text {
-                                text: "•"
+                                text: "·"
                                 font.pointSize: fs(16)
                                 color: "#232a40"
                                 visible: progressRow.peerNeedSummary.length > 0
@@ -281,7 +281,7 @@ Item {
                             Repeater {
                                 model: (modelData.last_changes || []).slice(0, 3)
                                 delegate: Text {
-                                    text: `${modelData.when} • ${modelData.action} • ${modelData.name}` + (modelData.origin ? ` (${modelData.origin})` : "")
+                                    text: `${modelData.when} · ${modelData.action} · ${modelData.name}` + (modelData.origin ? ` (${modelData.origin})` : "")
                                     font.pointSize: fs(14)
                                     color: "#2b3146"
                                 }
