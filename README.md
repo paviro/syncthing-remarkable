@@ -111,3 +111,39 @@ To access Syncthing over your local network:
 > - **Enable HTTPS** in the Syncthing web interface (Settings → GUI → Use HTTPS for GUI)
 > 
 > This ensures your Syncthing instance is protected when accessible over the network.
+
+## Debugging and Logs
+
+If you encounter issues or want to monitor the app's behavior, you can view the logs on your reMarkable device using SSH.
+
+### Real-time Logs
+
+**Backend logs** (application logic and Syncthing operations):
+
+```bash
+journalctl -f | grep -i 'appload\|syncthing'
+```
+
+**Frontend logs** (UI and QML-related messages):
+
+```bash
+journalctl -f | grep -i 'qml\|syncthing-monitor'
+```
+
+> **Tip:** The `-f` flag follows the log output in real-time. Press `Ctrl+C` to stop viewing logs.
+
+### Historical Logs
+
+To view the last 500 log entries:
+
+**Backend history:**
+
+```bash
+journalctl -n 500 | grep -i 'appload\|syncthing'
+```
+
+**Frontend history:**
+
+```bash
+journalctl -n 500 | grep -i 'qml\|syncthing'
+```
